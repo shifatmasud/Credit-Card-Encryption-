@@ -6,13 +6,15 @@ import { theme, type CSS } from '../../styles/theme';
 const EncryptionVisualizer: React.FC = () => {
     const [isEncrypted, setIsEncrypted] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
+    const [showFollowThrough, setShowFollowThrough] = useState(false);
 
     const handleToggle = () => {
-        if (isAnimating) return;
+        if (isAnimating || showFollowThrough) return;
         setIsEncrypted(!isEncrypted);
     };
 
     const animationDuration = 0.8;
+    const followThroughDuration = 0.4; // Faster scan motion for the follow-through
 
     // The scan line starts immediately.
     const scanTransition = { duration: animationDuration, ease: 'easeInOut' };
@@ -37,15 +39,19 @@ const EncryptionVisualizer: React.FC = () => {
                     animate={{ clipPath: isEncrypted ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)' }}
                     transition={followTransition}
                     onAnimationStart={() => setIsAnimating(true)}
-                    onAnimationComplete={() => setIsAnimating(false)}
+                    onAnimationComplete={() => {
+                        setIsAnimating(false);
+                        setShowFollowThrough(true); // Trigger the follow-through effect
+                    }}
                 >
                     <CreditCard isEncrypted={true} />
                 </motion.div>
                 
-                {/* Synced Animated Scan Line */}
+                {/* Primary Scan Line during wipe */}
                 <AnimatePresence>
                     {isAnimating && (
                          <motion.div
+                            key="scanLine"
                             style={styles.scanLine}
                             initial={{ 
                                 left: isEncrypted ? '0%' : '100%',
@@ -65,14 +71,37 @@ const EncryptionVisualizer: React.FC = () => {
                         />
                     )}
                 </AnimatePresence>
+
+                {/* Secondary Follow-through Scan Line after wipe is complete */}
+                <AnimatePresence>
+                    {showFollowThrough && (
+                        <motion.div
+                            key="followLine"
+                            style={styles.followLine}
+                            initial={{ 
+                                left: isEncrypted ? '0%' : '100%',
+                                opacity: 0 
+                            }}
+                            animate={{ 
+                                left: isEncrypted ? '100%' : '0%',
+                                opacity: [0, 0.3, 0.3, 0] // Even lower opacity
+                            }}
+                            transition={{
+                                left: { duration: followThroughDuration, ease: 'easeOut' },
+                                opacity: { duration: followThroughDuration, times: [0, 0.2, 0.8, 1] }
+                            }}
+                            onAnimationComplete={() => setShowFollowThrough(false)}
+                        />
+                    )}
+                </AnimatePresence>
             </motion.div>
 
             <motion.button
                 style={styles.button}
                 onClick={handleToggle}
-                whileHover={{ scale: isAnimating ? 1 : 1.05 }}
-                whileTap={{ scale: isAnimating ? 1 : 0.95 }}
-                disabled={isAnimating}
+                whileHover={{ scale: (isAnimating || showFollowThrough) ? 1 : 1.05 }}
+                whileTap={{ scale: (isAnimating || showFollowThrough) ? 1 : 0.95 }}
+                disabled={isAnimating || showFollowThrough}
                 animate={{
                     background: isEncrypted ? theme.color.Secondary.Surface[1] : theme.color.Primary.Surface[1],
                     color: isEncrypted ? theme.color.Secondary.Content[1] : theme.color.Primary.Content[1]
@@ -100,6 +129,7 @@ const styles: { [key:string]: CSS } = {
         maxWidth: '380px',
         borderRadius: theme.radius.card,
         transformStyle: 'preserve-3d', // Enable 3D transformations for children
+        overflow: 'hidden', // Clip the scan lines to the card border
     },
     encryptedCardWrapper: {
         position: 'absolute',
@@ -121,6 +151,17 @@ const styles: { [key:string]: CSS } = {
         boxShadow: `0 0 15px 3px ${theme.color.Focus.Surface[1]}`,
         zIndex: 2,
         borderRadius: '2px',
+    },
+    followLine: {
+        position: 'absolute',
+        top: '-10%',
+        transform: 'translateX(-50%)',
+        width: '100px',
+        height: '120%',
+        background: theme.color.Base.Surface[2], // Use white for the sheen
+        zIndex: 1,
+        borderRadius: '50px',
+        filter: 'blur(50px)', // Even more blurred for a softer look
     },
     button: {
         ...theme.type.Readable.Body.M,
