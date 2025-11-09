@@ -1,0 +1,5 @@
+{
+  "name": "Real-Time Credit Card Encryption Visualizer",
+  "description": "A real-time visualization of credit card encryption, featuring a seamless stream of cards transforming as they pass through a central wipe effect.",
+  "requestFramePermissions": []
+}
